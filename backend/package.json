@@ -1,0 +1,30 @@
+{
+  "name": "lgtv2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "poweron": "node power-on-all.js",
+    "test": "node restart-invalid-mac.test.js",
+    "test:restart": "node restart-invalid-mac.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "connect-sqlite3": "^0.9.0",
+    "express": "^5.2.1",
+    "express-session": "^1.17.4",
+    "node-cron": "^4.2.1",
+    "node-ssdp": "^4.0.1",
+    "ping": "^0.4.0",
+    "samsung-remote": "^1.6.2",
+    "sqlite3": "^5.1.6",
+    "wake_on_lan": "^1.0.0",
+    "ws": "^8.21.0"
+  }
+}

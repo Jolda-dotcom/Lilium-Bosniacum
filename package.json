@@ -1,0 +1,21 @@
+{
+  "name": "lgtv2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "test.js",
+  "scripts": {
+    "dev": "cd frontend && npm run dev -- --host 127.0.0.1 --port 3000",
+    "build:frontend": "cd frontend && npm run build",
+    "lint:frontend": "cd frontend && npm run lint",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "node-cron": "^4.2.1",
+    "wake_on_lan": "^1.0.0",
+    "ws": "^8.21.0"
+  }
+}

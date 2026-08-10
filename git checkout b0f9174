@@ -1,0 +1,44 @@
+[33meaee8d0[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32madminpanel[m[33m, [m[1;33mtag: [m[1;33mv1.0[m[33m, [m[1;31morigin/adminpanel[m[33m)[m Finalize v1.0 release docs and scope lock
+[33m0ffeac5[m Finalna verzija, sad samo održavanje
+[33mf40dc8b[m ojačan sistem da se sam popravlja
+[33mb0f9174[m poboljsano brisanje uredjaja
+[33m5c30487[m Izbrisana nepotrebna kopija, dodati logovi po uredjaju, razbijen app tsx na vise manjih fajlova
+[33m69edf92[m jos bolja verzija
+[33m5f29e2c[m Dodata funkcionalnost za samsung i ostale uređaje
+[33m7be48ff[m Dodat scan, da pretrazi koji su uredjaji na mrezi
+[33ma3266d1[m unaprijeđeno dodatno
+[33m77fe672[m popravljene funkcije
+[33m91d33ee[m dodat jos jedan stil pored cron-a
+[33m5515c7a[m dodato jos ikona, loading skeleton, esc za zatvaranje modala i jos
+[33m93269ee[m dodate ikone
+[33mae18f3e[m vizuelno uljepšavanje frontenda
+[33mc3778b3[m popravljene boje
+[33m7dac1ff[m popravljen light mode, dugmad. dodan modal
+[33m41be0af[m[33m ([m[1;32mcopilot/worktree-2026-06-15T07-51-22[m[33m)[m popravljeno dugme za spremanje rasporeda
+[33mdf3f7a3[m Dzeko
+[33mad76742[m Fix: Power-off functionality and status refresh for LG WebOS TV - manifest update and refreshStatus logic correction
+[33mc30e10c[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Style power buttons: green for on, red for off
+[33m4b40d2a[m Add single-device restart endpoint and group power-off support, finalize control features
+[33m4210c85[m Improve LG webOS TV power state detection and refresh logic
+[33mf977b66[m dodatno dugme za gasenje i provjera jel uredjaj upaljen ili ugasen
+[33m348034d[m dodato da se pali na mrezu
+[33m9baa6f5[m Added poweroff endpoint scaffold
+[33m3082524[m uredeni modal za dodavanje/uredjivanje, manji inputi i clean look
+[33mca21609[m dodana alarm notifikacija za offline uredjaje i health score mreže
+[33m2ad7579[m povecana razmaka pie charta i ispravljena narandzasta boja u legendi
+[33m8c329bb[m popravljen pie chart - dodana narandzasta boja za offline uredjaje
+[33m1a74b48[m dodano pie chart i circular progress grafovi za ljepsi prikaz statusa
+[33m5315e44[m dodano dashboard grafove statusa i dodatne uvid sekcije
+[33m6c6f32a[m dodano aktivni feed aktivnosti i dodatne UI sekcije
+[33m16fc985[m dodato jos detalja
+[33m7fefa85[m Add group power-on support and improve group action UI
+[33m6b2cc6c[m Add standalone football career game files
+[33md933429[m Refine add-device UI and replace native dialogs with modal in frontend
+[33m0259a15[m Dodano backend/data.db u .gitignore da se ne prati lokalna baza
+[33mfa19a9f[m Prevedeno sučelje na Bosanski i ispravljeno prikazivanje statusa uređaja
+[33mc6c5ddf[m Uklonjeno automatsko osvježavanje; ostavljeno samo ručno osvježavanje
+[33m58e210d[m Uređeno vizualno frontend aplikacije
+[33m4b868bd[m Dodano backend SQLite API, upravljanje grupama uređaja i masovne akcije frontend-a
+[33m40ef1a7[m LG TV admin panel frontend
+[33m7caae54[m[33m ([m[1;32mmain[m[33m)[m Initial commit
+[33m720e545[m Initial commit
