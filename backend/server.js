@@ -8,6 +8,7 @@ const { exec } = require("child_process");
 const sqlite3 = require("sqlite3").verbose();
 const ping = require("ping");
 const session = require("express-session");
+const SQLiteStore = require("connect-sqlite3")(session);
 const wol = require("wake_on_lan");
 const WebSocket = require("ws");
 const cron = require("node-cron");
@@ -453,16 +454,30 @@ const recordRuntimeIssue = (kind, payload = {}) => {
   trimArray(runtimeIssues, MAX_RUNTIME_ISSUES);
 };
 
+console.log("Backend server process starting...");
+
 process.on("unhandledRejection", (reason) => {
   const message = reason instanceof Error ? reason.message : String(reason);
-  const stack = reason instanceof Error ? reason.stack : undefined;
+  const stack = reason instanceof Error ? reason.stack : String(reason);
+  console.error("Unhandled rejection:", message);
+  if (stack) {
+    console.error(stack);
+  }
   recordRuntimeIssue("unhandledRejection", { message, stack });
 });
 
 process.on("uncaughtException", (error) => {
   const message = error instanceof Error ? error.message : String(error);
-  const stack = error instanceof Error ? error.stack : undefined;
+  const stack = error instanceof Error ? error.stack : String(error);
+  console.error("Uncaught exception:", message);
+  if (stack) {
+    console.error(stack);
+  }
   recordRuntimeIssue("uncaughtException", { message, stack });
+});
+
+process.on("exit", (code) => {
+  console.log(`Backend process exiting with code ${code}`);
 });
 
 const applySecurityHeaders = (req, res, next) => {
