@@ -5,8 +5,9 @@ const { runAsync, allAsync, getAsync, writeAuditLog } = require("../lib/database
 const { refreshStatus, ensureValidDeviceMac, selfHealDeviceMac } = require("../lib/device-store");
 const { executeWithRetryAndRollback, broadcastDeviceState, executeScheduleAction } = require("../lib/device-actions");
 const { registerScheduleTask, removeScheduleTask } = require("../lib/schedule-service");
-const { buildRestartProfile, sendWebosRestart } = require("../restart-profile");
-const { powerOnAll, powerOffDevice, powerOnDevice, wakeDevice, queryDevicePowerState } = require("../tv-adapter");
+const { buildRestartProfile } = require("../restart-profile");
+const { powerOnAll } = require("../power-on-all");
+const { powerOffDevice, powerOnDevice, wakeDevice, queryDevicePowerState, sendWebosRestart } = require("../tv-adapter");
 
 router.get("/devices", async (req, res) => {
   try {

@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 const { runAsync, allAsync, writeAuditLog, getAsync } = require("../lib/database");
 const { ensureValidDeviceMac } = require("../lib/device-store");
-const { buildRestartProfile, sendWebosRestart } = require("../restart-profile");
-const { wakeDevice, powerOffDevice } = require("../tv-adapter");
+const { buildRestartProfile } = require("../restart-profile");
+const { wakeDevice, powerOffDevice, sendWebosRestart } = require("../tv-adapter");
 const { broadcastDeviceState } = require("../lib/device-actions");
 
 router.get("/groups", async (req, res) => {
