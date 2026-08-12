@@ -67,6 +67,7 @@ export default function AppLayout({
     { label: 'Početna', path: '/', icon: DashboardIcon },
     { label: 'Uređaji', path: '/devices', icon: TvIcon },
     { label: 'Grupe', path: '/groups', icon: PeopleIcon },
+    { label: 'Korisnici', path: '/users', icon: PeopleIcon },
     { label: 'Revizija', path: '/audit', icon: DescriptionIcon },
     { label: 'Postavke', path: '/settings', icon: SettingsIcon },
   ];
