@@ -199,60 +199,82 @@ export function useScheduleActions(options: UseScheduleActionsOptions) {
     }
   }, [baseUrl, selectedDeviceId, showMessage]);
 
-  const handleSaveScheduleBuilder = useCallback(async (data: { hour: number; minute: number; days: number[]; cron: string }) => {
+  const handleSaveScheduleBuilder = useCallback(async (data: {
+    hour: number;
+    minute: number;
+    days: number[];
+    cron: string;
+    turnOffEnabled?: boolean;
+    turnOffHour?: number;
+    turnOffMinute?: number;
+    turnOffCron?: string;
+    afterPowerOnAction?: string;
+    afterPowerOnTarget?: string;
+  }) => {
     if (!selectedDeviceId) {
       showMessage("Greška", "Nema odabranog uređaja.");
       return;
     }
 
-    setScheduleCron(data.cron);
-
     const available = getAvailableActionsForDevice(selectedDevice);
-    if (!available.some((action) => action.value === scheduleAction)) {
+    const activeAction = data.afterPowerOnAction || scheduleAction || "poweron";
+    if (!available.some((action) => action.value === activeAction)) {
       showMessage("Greška", "Odabrana akcija nije podržana za ovaj uređaj.");
       return;
     }
 
-    const payload = scheduleSequence.length > 0
-      ? {
-          cron: data.cron,
-          actions: scheduleSequence.map((s) => ({
-            action: s.action,
-            params: s.params || {},
-            delayMs: s.delayMs || undefined,
-            waitForReadyMs: s.waitForReadyMs || undefined,
-            settleMs: s.settleMs || undefined,
-          })),
-          description: scheduleDescription.trim(),
-          enabled: scheduleEnabled,
-        }
-      : {
-          cron: data.cron,
-          action: scheduleAction,
-          action_params:
-            scheduleAction === "launchApp"
-              ? { target: scheduleTarget.trim() }
-              : scheduleAction === "setVolume"
-              ? { volume: Number(scheduleTarget) }
+    const powerOnSteps = activeAction === "poweron" || !activeAction
+      ? [{ action: "poweron" }]
+      : [
+          { action: "poweron" },
+          {
+            action: activeAction,
+            params: activeAction === "launchApp"
+              ? { target: (data.afterPowerOnTarget || scheduleTarget || "").trim() }
+              : activeAction === "setVolume"
+              ? { volume: Number(data.afterPowerOnTarget || scheduleTarget || 0) }
               : {},
-          description: scheduleDescription.trim(),
-          enabled: scheduleEnabled,
-        };
+          },
+        ];
+
+    const schedulePayloads = [] as Array<{ cron: string; action?: string; actions?: Array<Record<string, unknown>>; action_params?: Record<string, unknown>; description: string; enabled: boolean }>;
+
+    schedulePayloads.push({
+      cron: data.cron,
+      actions: powerOnSteps.map((step) => ({
+        action: step.action,
+        params: step.params || {},
+      })),
+      description: scheduleDescription.trim() || `Uključi ${selectedDevice?.name || "uređaj"}`,
+      enabled: scheduleEnabled,
+    });
+
+    if (data.turnOffEnabled && data.turnOffCron) {
+      schedulePayloads.push({
+        cron: data.turnOffCron,
+        action: "poweroff",
+        action_params: {},
+        description: scheduleDescription.trim() || `Isključi ${selectedDevice?.name || "uređaj"}`,
+        enabled: scheduleEnabled,
+      });
+    }
 
     try {
-      const url = `${baseUrl}/devices/${selectedDeviceId}/schedules`;
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      for (const payload of schedulePayloads) {
+        const response = await fetch(`${baseUrl}/devices/${selectedDeviceId}/schedules`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        showMessage("Greška", errorData?.error || "Neuspješno spremanje rasporeda.");
-        return;
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          showMessage("Greška", errorData?.error || "Neuspješno spremanje rasporeda.");
+          return;
+        }
       }
 
+      setScheduleCron(data.cron);
       await loadDeviceSchedules(selectedDeviceId);
       clearScheduleForm();
       showMessage("Info", "Raspored je uspješno spremljen!");
@@ -260,7 +282,7 @@ export function useScheduleActions(options: UseScheduleActionsOptions) {
       console.error("Greška pri spremanju rasporeda:", error);
       showMessage("Greška", "Greška pri spremanju rasporeda.");
     }
-  }, [baseUrl, clearScheduleForm, loadDeviceSchedules, selectedDeviceId, selectedDevice, scheduleAction, scheduleSequence, scheduleDescription, scheduleEnabled, scheduleTarget, showMessage, setScheduleCron]);
+  }, [baseUrl, clearScheduleForm, loadDeviceSchedules, scheduleAction, scheduleDescription, scheduleEnabled, scheduleTarget, selectedDevice, selectedDeviceId, setScheduleCron, showMessage]);
 
   return { loadDeviceSchedules, clearScheduleForm, handleEditSchedule, handleDeleteSchedule, handleToggleSchedule, fetchScheduleLogs, handleTriggerSchedule, handleSaveScheduleBuilder };
 }

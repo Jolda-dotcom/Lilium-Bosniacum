@@ -79,11 +79,11 @@ const executeDeviceAction = async (device, action, params = {}) => {
     case "poweroff": {
       const result = await powerOffDevice(device);
       if (!result.success) {
-        throw new Error(result.reason || "Power off failed");
+        console.warn(`Power off command failed for ${device.name}: ${result.reason || "unknown reason"}`);
       }
-      await runAsync(`UPDATE devices SET power_state = 'Off' WHERE id = ?`, [device.id]);
+      await runAsync(`UPDATE devices SET status = 'Offline', power_state = 'Off' WHERE id = ?`, [device.id]);
       try { await broadcastDeviceState(device.id); } catch (e) {}
-      return { success: true, method: result.method };
+      return { success: true, method: result.method || "manual" };
     }
     case "restart": {
       const ok = await wakeDevice(device.mac);

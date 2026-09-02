@@ -21,7 +21,7 @@ const {
 } = require("./lib/schedule-service");
 const { repairInvalidDeviceMacs } = require("./lib/device-store");
 const { setWebSocketServer } = require("./lib/device-actions");
-
+const { ensureDefaultAdmin } = require("./lib/auth");
 const authRoutes = require("./routes/auth");
 const auditRoutes = require("./routes/audit");
 const diagnosticsRoutes = require("./routes/diagnostics");
@@ -187,6 +187,7 @@ app.use((err, req, res, next) => {
 
 const startServer = async () => {
   await initDatabase();
+  await ensureDefaultAdmin();
   ensureBackupDirectory();
 
   cleanupRateLimitStore();

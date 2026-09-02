@@ -11,6 +11,10 @@ import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
 import Divider from '@mui/material/Divider';
 import Chip from '@mui/material/Chip';
+import TextField from '@mui/material/TextField';
+import Switch from '@mui/material/Switch';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import { buildCronExpression, formatClock } from '../utils/schedule';
 
 interface ScheduleBuilderProps {
   isOpen: boolean;
@@ -20,6 +24,11 @@ interface ScheduleBuilderProps {
   currentCron: string;
   action: string;
   deviceName: string;
+  selectedAction: string;
+  onActionChange: (value: string) => void;
+  actionTarget: string;
+  onActionTargetChange: (value: string) => void;
+  availableActions: Array<{ value: string; label: string; requiresParameter?: boolean; parameterLabel?: string }>;
 }
 
 interface ScheduleData {
@@ -27,7 +36,129 @@ interface ScheduleData {
   minute: number;
   days: number[];
   cron: string;
+  turnOffEnabled: boolean;
+  turnOffHour?: number;
+  turnOffMinute?: number;
+  turnOffCron?: string;
+  afterPowerOnAction?: string;
+  afterPowerOnTarget?: string;
 }
+
+interface TimeInputEditorProps {
+  value: number;
+  max: number;
+  onChange: (nextValue: number) => void;
+}
+
+const TimeInputEditor: React.FC<TimeInputEditorProps> = ({ value, max, onChange }) => {
+  const [draft, setDraft] = useState<string>(String(value).padStart(2, '0'));
+
+  useEffect(() => {
+    setDraft(String(value).padStart(2, '0'));
+  }, [value]);
+
+  const commitDraft = (nextDraft: string) => {
+    const digits = nextDraft.replace(/\D/g, '').slice(0, 2);
+    if (!digits) {
+      setDraft('00');
+      return;
+    }
+
+    const parsed = Number.parseInt(digits, 10);
+    if (Number.isNaN(parsed)) {
+      setDraft(String(value).padStart(2, '0'));
+      return;
+    }
+
+    const clamped = Math.min(Math.max(parsed, 0), max);
+    setDraft(String(clamped).padStart(2, '0'));
+    onChange(clamped);
+  };
+
+  return (
+    <TextField
+      value={draft}
+      onFocus={(event) => {
+        const input = event.target as HTMLInputElement | null;
+        input?.select();
+      }}
+      onClick={(event) => {
+        const input = event.currentTarget.querySelector('input');
+        if (input) {
+          input.select();
+        }
+      }}
+      onChange={(event) => {
+        const digits = event.target.value.replace(/\D/g, '').slice(0, 2);
+        setDraft(digits);
+
+        if (digits.length === 2) {
+          const parsed = Number.parseInt(digits, 10);
+          if (!Number.isNaN(parsed)) {
+            const clamped = Math.min(Math.max(parsed, 0), max);
+            setDraft(String(clamped).padStart(2, '0'));
+            onChange(clamped);
+          }
+        }
+      }}
+      onBlur={() => {
+        const digits = draft.replace(/\D/g, '').slice(0, 2);
+        if (!digits) {
+          setDraft(String(value).padStart(2, '0'));
+          return;
+        }
+
+        const parsed = Number.parseInt(digits, 10);
+        if (Number.isNaN(parsed)) {
+          setDraft(String(value).padStart(2, '0'));
+          return;
+        }
+
+        const clamped = Math.min(Math.max(parsed, 0), max);
+        setDraft(String(clamped).padStart(2, '0'));
+        onChange(clamped);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === 'Tab') {
+          event.preventDefault();
+          const digits = draft.replace(/\D/g, '').slice(0, 2);
+          commitDraft(digits);
+          event.currentTarget.blur();
+        }
+      }}
+      variant="outlined"
+      size="small"
+      slotProps={{
+        htmlInput: {
+          inputMode: 'numeric',
+          pattern: '[0-9]*',
+          maxLength: 2,
+          style: {
+            textAlign: 'center',
+            fontWeight: 700,
+            fontSize: '1.6rem',
+            padding: '8px 0',
+            width: '2ch',
+          },
+        },
+      }}
+      sx={{
+        width: 72,
+        '& .MuiOutlinedInput-root': {
+          borderRadius: 2,
+          backgroundColor: 'primary.main',
+          color: 'primary.contrastText',
+        },
+        '& .MuiOutlinedInput-notchedOutline': {
+          borderColor: 'primary.main',
+        },
+        '& .MuiInputBase-input': {
+          color: 'primary.contrastText',
+        },
+      }}
+    />
+  );
+};
 
 const ScheduleBuilderModal: React.FC<ScheduleBuilderProps> = ({
   isOpen,
@@ -37,17 +168,24 @@ const ScheduleBuilderModal: React.FC<ScheduleBuilderProps> = ({
   currentCron,
   action,
   deviceName,
+  selectedAction,
+  onActionChange,
+  actionTarget,
+  onActionTargetChange,
+  availableActions,
 }) => {
   const [hour, setHour] = useState(7);
   const [minute, setMinute] = useState(0);
-  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // Monday to Friday
+  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [turnOffEnabled, setTurnOffEnabled] = useState(true);
+  const [turnOffHour, setTurnOffHour] = useState(9);
+  const [turnOffMinute, setTurnOffMinute] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const dayNames = ["Nedjelja", "Ponedjeljak", "Utorak", "Srijeda", "Četvrtak", "Petak", "Subota"];
   const dayLabelsShort = ["Ne", "Po", "Ut", "Sr", "Če", "Pe", "Su"];
 
   useEffect(() => {
-    // Parse current cron to populate fields
     let parsedHour: number | null = null;
     let parsedMinute: number | null = null;
     let parsedDays: number[] | null = null;
@@ -56,19 +194,18 @@ const ScheduleBuilderModal: React.FC<ScheduleBuilderProps> = ({
       const parts = currentCron.trim().split(/\s+/);
       if (parts.length >= 5) {
         const [min, hrs] = parts;
-        // Simple parsing for HH:MM format
         if (!/\*/.test(hrs) && !/\*/.test(min)) {
           const h = parseInt(hrs, 10);
           const m = parseInt(min, 10);
-          if (!isNaN(h) && !isNaN(m)) {
+          if (!Number.isNaN(h) && !Number.isNaN(m)) {
             parsedHour = h;
             parsedMinute = m;
           }
         }
-        // Parse day of week (5th field)
+
         if (parts[4] && parts[4] !== "*") {
           const days = parts[4].split(",").map((d) => parseInt(d, 10));
-          parsedDays = days.filter((d) => !isNaN(d));
+          parsedDays = days.filter((d) => !Number.isNaN(d));
         }
       }
     }
@@ -88,29 +225,40 @@ const ScheduleBuilderModal: React.FC<ScheduleBuilderProps> = ({
     return () => window.clearTimeout(timer);
   }, [currentCron]);
 
-  const generateCron = (h: number, m: number, days: number[]): string => {
-    if (days.length === 0) {
-      return "0 0 * * *"; // Invalid, fallback
-    }
-    const dayString = days.sort((a, b) => a - b).join(",");
-    return `${m} ${h} * * ${dayString}`;
-  };
-
   const handleHourChange = (newHour: number) => {
-    setHour(newHour);
-    onCronChange(generateCron(newHour, minute, selectedDays));
+    const nextHour = ((newHour % 24) + 24) % 24;
+    setHour(nextHour);
+    onCronChange(buildCronExpression(nextHour, minute, selectedDays));
   };
 
   const handleMinuteChange = (newMinute: number) => {
+    const nextMinute = ((newMinute % 60) + 60) % 60;
+    setMinute(nextMinute);
+    onCronChange(buildCronExpression(hour, nextMinute, selectedDays));
+  };
+
+  const handlePresetTime = (newHour: number, newMinute: number) => {
+    setHour(newHour);
     setMinute(newMinute);
-    onCronChange(generateCron(hour, newMinute, selectedDays));
+    onCronChange(buildCronExpression(newHour, newMinute, selectedDays));
   };
 
   const handleSave = async () => {
     setLoading(true);
     try {
-      const cron = generateCron(hour, minute, selectedDays);
-      await onSave({ hour, minute, days: selectedDays, cron });
+      const cron = buildCronExpression(hour, minute, selectedDays);
+      await onSave({
+        hour,
+        minute,
+        days: selectedDays,
+        cron,
+        turnOffEnabled,
+        turnOffHour: turnOffEnabled ? turnOffHour : undefined,
+        turnOffMinute: turnOffEnabled ? turnOffMinute : undefined,
+        turnOffCron: turnOffEnabled ? buildCronExpression(turnOffHour, turnOffMinute, selectedDays) : undefined,
+        afterPowerOnAction: selectedAction,
+        afterPowerOnTarget: actionTarget,
+      });
       onClose();
     } catch (error) {
       console.error("Error saving schedule:", error);
@@ -141,8 +289,11 @@ const ScheduleBuilderModal: React.FC<ScheduleBuilderProps> = ({
   ) => {
     const days = Array.isArray(newSelectedDays) ? newSelectedDays : [];
     setSelectedDays(days);
-    onCronChange(generateCron(hour, minute, days));
+    onCronChange(buildCronExpression(hour, minute, days));
   };
+
+  const selectedActionMeta = availableActions.find((item) => item.value === selectedAction) || availableActions[0];
+  const requiresActionTarget = Boolean(selectedActionMeta?.requiresParameter);
 
   return (
     <Dialog
@@ -169,12 +320,11 @@ const ScheduleBuilderModal: React.FC<ScheduleBuilderProps> = ({
           </Typography>
         </Box>
 
-        {/* Time Section */}
         <Box>
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-            ⏰ Vrijeme
+            ⏰ Vrijeme uključivanja
           </Typography>
-          
+
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2, mb: 2 }}>
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
               <Typography variant="caption" color="textSecondary">
@@ -183,28 +333,16 @@ const ScheduleBuilderModal: React.FC<ScheduleBuilderProps> = ({
               <Button
                 variant="outlined"
                 size="small"
-                onClick={() => handleHourChange((hour - 1 + 24) % 24)}
+                onClick={() => handleHourChange(hour - 1)}
                 sx={{ minWidth: 'auto' }}
               >
                 ◀
               </Button>
-              <Paper
-                sx={{
-                  width: 60,
-                  textAlign: 'center',
-                  py: 1,
-                  bgcolor: 'primary.main',
-                  color: 'primary.contrastText',
-                }}
-              >
-                <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  {String(hour).padStart(2, "0")}
-                </Typography>
-              </Paper>
+              <TimeInputEditor value={hour} max={23} onChange={(nextValue) => handleHourChange(nextValue)} />
               <Button
                 variant="outlined"
                 size="small"
-                onClick={() => handleHourChange((hour + 1) % 24)}
+                onClick={() => handleHourChange(hour + 1)}
                 sx={{ minWidth: 'auto' }}
               >
                 ▶
@@ -220,28 +358,16 @@ const ScheduleBuilderModal: React.FC<ScheduleBuilderProps> = ({
               <Button
                 variant="outlined"
                 size="small"
-                onClick={() => handleMinuteChange((minute - 5 + 60) % 60)}
+                onClick={() => handleMinuteChange(minute - 5)}
                 sx={{ minWidth: 'auto' }}
               >
                 ◀
               </Button>
-              <Paper
-                sx={{
-                  width: 60,
-                  textAlign: 'center',
-                  py: 1,
-                  bgcolor: 'primary.main',
-                  color: 'primary.contrastText',
-                }}
-              >
-                <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  {String(minute).padStart(2, "0")}
-                </Typography>
-              </Paper>
+              <TimeInputEditor value={minute} max={59} onChange={(nextValue) => handleMinuteChange(nextValue)} />
               <Button
                 variant="outlined"
                 size="small"
-                onClick={() => handleMinuteChange((minute + 5) % 60)}
+                onClick={() => handleMinuteChange(minute + 5)}
                 sx={{ minWidth: 'auto' }}
               >
                 ▶
@@ -255,10 +381,7 @@ const ScheduleBuilderModal: React.FC<ScheduleBuilderProps> = ({
                 key={preset.label}
                 variant="outlined"
                 size="small"
-                onClick={() => {
-                  handleHourChange(preset.hour);
-                  handleMinuteChange(preset.minute);
-                }}
+                onClick={() => handlePresetTime(preset.hour, preset.minute)}
               >
                 {preset.label}
               </Button>
@@ -266,14 +389,83 @@ const ScheduleBuilderModal: React.FC<ScheduleBuilderProps> = ({
           </Box>
         </Box>
 
+        <Box>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+            ⚡ Akcija nakon uključivanja
+          </Typography>
+
+          <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+            {availableActions.map((item) => (
+              <Button
+                key={item.value}
+                variant={selectedAction === item.value ? 'contained' : 'outlined'}
+                size="small"
+                onClick={() => onActionChange(item.value)}
+              >
+                {item.label}
+              </Button>
+            ))}
+          </Box>
+
+          {requiresActionTarget && (
+            <TextField
+              fullWidth
+              size="small"
+              label={selectedActionMeta?.parameterLabel || 'App ID ili URL'}
+              value={actionTarget}
+              onChange={(event) => onActionTargetChange(event.target.value)}
+              placeholder={selectedActionMeta?.parameterLabel || 'App ID ili URL'}
+            />
+          )}
+        </Box>
+
+        <Box>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={turnOffEnabled}
+                onChange={(event) => setTurnOffEnabled(event.target.checked)}
+              />
+            }
+            label="Dodaj isključivanje TV-a"
+          />
+
+          {turnOffEnabled && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2, mt: 2 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                <Typography variant="caption" color="textSecondary">Sat</Typography>
+                <Button variant="outlined" size="small" onClick={() => setTurnOffHour((turnOffHour - 1 + 24) % 24)} sx={{ minWidth: 'auto' }}>
+                  ◀
+                </Button>
+                <TimeInputEditor value={turnOffHour} max={23} onChange={(nextValue) => setTurnOffHour(nextValue)} />
+                <Button variant="outlined" size="small" onClick={() => setTurnOffHour((turnOffHour + 1) % 24)} sx={{ minWidth: 'auto' }}>
+                  ▶
+                </Button>
+              </Box>
+
+              <Typography variant="h4" sx={{ fontWeight: 700 }}>:</Typography>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                <Typography variant="caption" color="textSecondary">Minuta</Typography>
+                <Button variant="outlined" size="small" onClick={() => setTurnOffMinute((turnOffMinute - 5 + 60) % 60)} sx={{ minWidth: 'auto' }}>
+                  ◀
+                </Button>
+                <TimeInputEditor value={turnOffMinute} max={59} onChange={(nextValue) => setTurnOffMinute(nextValue)} />
+                <Button variant="outlined" size="small" onClick={() => setTurnOffMinute((turnOffMinute + 5) % 60)} sx={{ minWidth: 'auto' }}>
+                  ▶
+                </Button>
+              </Box>
+            </Box>
+          )}
+        </Box>
+
         <Divider />
 
-        {/* Days Section */}
         <Box>
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
             📅 Dani
           </Typography>
-          
+
           <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
             <ToggleButtonGroup
               value={selectedDays}
@@ -297,7 +489,7 @@ const ScheduleBuilderModal: React.FC<ScheduleBuilderProps> = ({
                 size="small"
                 onClick={() => {
                   setSelectedDays(preset.days);
-                  onCronChange(generateCron(hour, minute, preset.days));
+                  onCronChange(buildCronExpression(hour, minute, preset.days));
                 }}
               >
                 {preset.label}
@@ -323,44 +515,45 @@ const ScheduleBuilderModal: React.FC<ScheduleBuilderProps> = ({
 
         <Divider />
 
-        {/* Summary Section */}
         <Box sx={{ bgcolor: 'background.paper', p: 2, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
           <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
             📋 Sažetak
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="body2" color="textSecondary">Vrijeme:</Typography>
+              <Typography variant="body2" color="textSecondary">Uključi:</Typography>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                {String(hour).padStart(2, "0")}:{String(minute).padStart(2, "0")}
+                {formatClock(hour)}:{formatClock(minute)}
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="body2" color="textSecondary">Dani:</Typography>
+              <Typography variant="body2" color="textSecondary">Akcija:</Typography>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                {selectedDays.length === 7
-                  ? "Svakodnevno"
-                  : selectedDays.length === 5 && selectedDays.join(",") === "1,2,3,4,5"
-                  ? "Radni dani (Po-Pe)"
-                  : `${selectedDays.length} dan(a)`}
+                {selectedActionMeta?.label || action}
               </Typography>
             </Box>
+            {turnOffEnabled && (
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2" color="textSecondary">Isključi:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {formatClock(turnOffHour)}:{formatClock(turnOffMinute)}
+                </Typography>
+              </Box>
+            )}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
               <Typography variant="body2" color="textSecondary">Cron:</Typography>
               <Typography variant="caption" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                {generateCron(hour, minute, selectedDays)}
+                {buildCronExpression(hour, minute, selectedDays)}
               </Typography>
             </Box>
           </Box>
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
-          Otkaži
-        </Button>
+        <Button onClick={onClose} disabled={loading}>Otkaži</Button>
         <Button
           onClick={handleSave}
-          disabled={loading || selectedDays.length === 0}
+          disabled={loading || selectedDays.length === 0 || (requiresActionTarget && !actionTarget.trim())}
           variant="contained"
           color="primary"
         >

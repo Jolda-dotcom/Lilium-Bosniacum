@@ -162,6 +162,30 @@ const pingDevice = async (ip) => {
   }
 };
 
+const resolveDeviceStatus = ({ alive, powerState, currentStatus }) => {
+  const powerValue = String(powerState || "").trim().toLowerCase();
+  const isExplicitlyOff = ["off", "offline", "inactive"].includes(powerValue);
+  const isExplicitlyOn = ["on", "online", "active"].includes(powerValue);
+
+  if (isExplicitlyOff) {
+    return "Offline";
+  }
+
+  if (alive === false) {
+    return "Offline";
+  }
+
+  if (isExplicitlyOn) {
+    return "Online";
+  }
+
+  if (currentStatus === "Offline") {
+    return "Offline";
+  }
+
+  return alive ? "Online" : "Offline";
+};
+
 const queryWebosPowerState = async (ip) => {
   if (!ip) {
     return null;
@@ -228,7 +252,6 @@ const queryWebosPowerState = async (ip) => {
 
 const refreshStatus = async (device) => {
   const alive = await pingDevice(device.ip);
-  const status = alive ? "Online" : "Offline";
   let powerState = device.power_state || device.powerState || "Off";
 
   if (alive) {
@@ -239,6 +262,8 @@ const refreshStatus = async (device) => {
   } else {
     powerState = "Off";
   }
+
+  const status = resolveDeviceStatus({ alive, powerState, currentStatus: device.status });
 
   if (status !== device.status || powerState !== device.power_state) {
     await runAsync(
@@ -269,5 +294,6 @@ module.exports = {
   ensureValidDeviceMac,
   selfHealDeviceMac,
   repairInvalidDeviceMacs,
+  resolveDeviceStatus,
   refreshStatus,
 };

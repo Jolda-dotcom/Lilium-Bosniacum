@@ -36,10 +36,26 @@ interface AppGlobalUIProps {
   onSelectionChange: (nextSelection: Set<string>) => void;
   showScheduleBuilder: boolean;
   onScheduleBuilderClose: () => void;
-  onScheduleBuilderSave: (schedule: { hour: number; minute: number; days: number[]; cron: string }) => Promise<void>;
+  onScheduleBuilderSave: (schedule: {
+    hour: number;
+    minute: number;
+    days: number[];
+    cron: string;
+    turnOffEnabled?: boolean;
+    turnOffHour?: number;
+    turnOffMinute?: number;
+    turnOffCron?: string;
+    afterPowerOnAction?: string;
+    afterPowerOnTarget?: string;
+  }) => Promise<void>;
   onScheduleCronChange: (cron: string) => void;
   scheduleCron: string;
+  scheduleAction: string;
   scheduleActionLabel: string;
+  scheduleTarget: string;
+  onScheduleActionChange: (value: string) => void;
+  onScheduleTargetChange: (value: string) => void;
+  availableActions: Array<{ value: string; label: string; requiresParameter?: boolean; parameterLabel?: string }>;
   selectedDeviceName: string;
   toastMessages: ToastMessage[];
   onRemoveToast: (id: string) => void;
@@ -77,7 +93,12 @@ export default function AppGlobalUI({
   onScheduleBuilderSave,
   onScheduleCronChange,
   scheduleCron,
+  scheduleAction,
   scheduleActionLabel,
+  scheduleTarget,
+  onScheduleActionChange,
+  onScheduleTargetChange,
+  availableActions,
   selectedDeviceName,
   toastMessages,
   onRemoveToast,
@@ -145,6 +166,11 @@ export default function AppGlobalUI({
         currentCron={scheduleCron}
         action={scheduleActionLabel}
         deviceName={selectedDeviceName}
+        selectedAction={scheduleAction}
+        onActionChange={onScheduleActionChange}
+        actionTarget={scheduleTarget}
+        onActionTargetChange={onScheduleTargetChange}
+        availableActions={availableActions}
       />
 
       <ToastContainer messages={toastMessages} onRemove={onRemoveToast} />

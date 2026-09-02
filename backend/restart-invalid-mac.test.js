@@ -1,11 +1,16 @@
 const assert = require("assert");
 const { isLikelyValidMac } = require("./tv-adapter");
 const { buildRestartProfile } = require("./restart-profile");
+const { resolveDeviceStatus } = require("./lib/device-store");
 
 const run = () => {
   assert.strictEqual(isLikelyValidMac("00:00:00:00:00:00"), false, "all-zero MAC must be invalid for WoL");
   assert.strictEqual(isLikelyValidMac("FF:FF:FF:FF:FF:FF"), false, "broadcast MAC must be invalid for WoL");
   assert.strictEqual(isLikelyValidMac("D8:74:EF:1D:A0:49"), true, "real MAC should be valid");
+
+  assert.strictEqual(resolveDeviceStatus({ alive: true, powerState: "On", currentStatus: "Offline" }), "Online", "power state On should be reported as Online");
+  assert.strictEqual(resolveDeviceStatus({ alive: true, powerState: "Off", currentStatus: "Online" }), "Offline", "power state Off should override reachability and report Offline");
+  assert.strictEqual(resolveDeviceStatus({ alive: false, powerState: "On", currentStatus: "Online" }), "Offline", "unreachable devices should not remain Online");
 
   const onlineProfile = buildRestartProfile({
     brand: "lg",

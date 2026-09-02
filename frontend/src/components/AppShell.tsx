@@ -91,6 +91,9 @@ export default function AppShell({
             <NavLink to="/groups" className={({ isActive }: { isActive: boolean }) => (isActive ? 'active' : '')}>
               👥 Grupe
             </NavLink>
+            <NavLink to="/users" className={({ isActive }: { isActive: boolean }) => (isActive ? 'active' : '')}>
+              👤 Korisnici
+            </NavLink>
             <NavLink to="/audit" className={({ isActive }: { isActive: boolean }) => (isActive ? 'active' : '')}>
               📜 Audit log
             </NavLink>

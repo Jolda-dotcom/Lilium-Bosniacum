@@ -95,7 +95,6 @@ router.post("/devices/:id/ping", async (req, res) => {
     }
 
     const alive = await ping.promise.probe(device.ip, { timeout: 2 }).then((result) => result.alive).catch(() => false);
-    const status = alive ? "Online" : "Offline";
     let powerState = device.power_state || device.powerState || "Off";
 
     if (alive) {
@@ -106,6 +105,12 @@ router.post("/devices/:id/ping", async (req, res) => {
     } else {
       powerState = "Off";
     }
+
+    const status = require("../lib/device-store").resolveDeviceStatus({
+      alive,
+      powerState,
+      currentStatus: device.status,
+    });
 
     await runAsync(`UPDATE devices SET status = ?, power_state = ? WHERE id = ?`, [
       status,
@@ -127,9 +132,9 @@ router.post("/devices/:id/poweroff", async (req, res) => {
     }
 
     const result = await powerOffDevice(device);
-    const newState = result.success ? "Off" : (device.power_state || device.powerState || "Unknown");
+    const newState = "Off";
 
-    await runAsync(`UPDATE devices SET power_state = ? WHERE id = ?`, [newState, device.id]);
+    await runAsync(`UPDATE devices SET status = 'Offline', power_state = ? WHERE id = ?`, [newState, device.id]);
     try { await broadcastDeviceState(device.id); } catch (e) {}
 
     console.log(`Power off requested for ${device.name} (${device.ip}) brand=${device.brand} result=${JSON.stringify(result)}`);

@@ -85,3 +85,38 @@ export const getActionLabel = (action: string) => {
       return action;
   }
 };
+
+export const formatClock = (value: number) => String(value).padStart(2, "0");
+
+export const buildCronExpression = (hour: number, minute: number, days: number[]) => {
+  if (!Array.isArray(days) || days.length === 0) {
+    return "0 0 * * *";
+  }
+
+  const sortedDays = [...days].sort((a, b) => a - b);
+  return `${minute} ${hour} * * ${sortedDays.join(",")}`;
+};
+
+export const buildScheduleActionParams = (action: string, actionTarget: string) => {
+  switch (action) {
+    case "launchApp":
+      return { target: actionTarget.trim() };
+    case "setVolume":
+      return { volume: Number(actionTarget) };
+    default:
+      return {};
+  }
+};
+
+export const createScheduleActionSequence = (action: string, actionTarget: string) => {
+  const primaryAction = action || "poweron";
+
+  if (primaryAction === "poweron" || !primaryAction) {
+    return [{ action: "poweron" }];
+  }
+
+  return [
+    { action: "poweron" },
+    { action: primaryAction, params: buildScheduleActionParams(primaryAction, actionTarget) },
+  ];
+};

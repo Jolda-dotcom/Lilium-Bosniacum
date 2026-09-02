@@ -157,10 +157,9 @@ router.post("/groups/:id/poweroff", async (req, res) => {
     const results = await Promise.all(
       devices.map(async (device) => {
         const result = await powerOffDevice(device);
-        const newState = result.success ? "Off" : device.power_state || device.powerState || "Off";
         await runAsync(
-          `UPDATE devices SET power_state = ?, status = 'Offline' WHERE id = ?`,
-          [newState, device.id]
+          `UPDATE devices SET power_state = 'Off', status = 'Offline' WHERE id = ?`,
+          [device.id]
         );
         return {
           id: device.id,

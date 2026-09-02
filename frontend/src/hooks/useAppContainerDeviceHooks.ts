@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useAppContainerDeviceActions } from "./useAppContainerDeviceActions";
 import { useDeviceEditorActions } from "./useDeviceEditorActions";
 import { useScheduleActions } from "./useScheduleActions";
@@ -205,6 +206,14 @@ export function useAppContainerDeviceHooks(options: UseAppContainerDeviceHooksOp
     setEditingScheduleId,
     showMessage,
   });
+
+  useEffect(() => {
+    if (selectedDeviceId === null) {
+      return;
+    }
+
+    void loadDeviceSchedules(selectedDeviceId);
+  }, [selectedDeviceId, loadDeviceSchedules]);
 
   const {
     selectedDevice,

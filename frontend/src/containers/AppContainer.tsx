@@ -20,6 +20,7 @@ const DevicesPage = lazy(() => import("../components/Devices"));
 const GroupsPage = lazy(() => import("../components/Groups"));
 const AuditPage = lazy(() => import("../components/Audit"));
 const SettingsPage = lazy(() => import("../components/Settings"));
+const UsersPage = lazy(() => import("../components/UsersPage"));
 
 export default function AppContainer() {
   const {
@@ -59,6 +60,11 @@ export default function AppContainer() {
         {activePage === "settings" && (
           <Suspense fallback={pageFallback}>
             <SettingsPage {...settingsProps} />
+          </Suspense>
+        )}
+        {activePage === "users" && (
+          <Suspense fallback={pageFallback}>
+            <UsersPage />
           </Suspense>
         )}
         {activePage === "devices" && (

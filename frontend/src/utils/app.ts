@@ -1,4 +1,4 @@
-export type AppPage = "dashboard" | "devices" | "groups" | "audit" | "settings" | "notfound";
+export type AppPage = "dashboard" | "devices" | "groups" | "audit" | "settings" | "users" | "notfound";
 
 export function getActivePage(pathname: string): AppPage {
   switch (pathname) {
@@ -12,6 +12,8 @@ export function getActivePage(pathname: string): AppPage {
       return "audit";
     case "/settings":
       return "settings";
+    case "/users":
+      return "users";
     default:
       return "notfound";
   }

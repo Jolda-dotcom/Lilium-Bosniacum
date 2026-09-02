@@ -79,8 +79,8 @@ const deleteUser = async (id) =>
   runAsync(`DELETE FROM users WHERE id = ?`, [id]);
 
 const ensureDefaultAdmin = async () => {
-  const existingUserCount = await getAsync(`SELECT COUNT(*) AS count FROM users`);
-  if (existingUserCount?.count === 0) {
+  const existingAdmin = await getUserByUsername(DEFAULT_ADMIN_USERNAME);
+  if (!existingAdmin) {
     await createUser({
       username: DEFAULT_ADMIN_USERNAME,
       password: DEFAULT_ADMIN_PASSWORD,
